@@ -10,45 +10,79 @@
 
 		var context = document.getElementById("canvas").getContext("2d");
 
-		function drawCell(x,y){
+		function drawCell(x,y) {
 			context.fillStyle = "#FF0000";
 			context.fillRect(x * 40, y * 40,40,40);
-		}
-
+		};
 
 		function Grid(cells) {
-			this.cells = cells;
+
+			var getCellId = function(cell) {
+				return cell.x + '.' + cell.y;
+			};
+
+			this.cells = [];
+			for (var i = 0; i < cells.length; i++) {
+				var cell = cells[i];
+				var cellId = getCellId(cell);
+				this.cells[cellId] = cell;
+			}
 
 			var neighbourCount = function(cell, cells) {
 				var neighbours = 0;
-				for (var j = 0; j < cells.length; j++) {
-					var otherCell = cells[j];
-					if (cell.x != otherCell.x && cell.y != otherCell.y && 
+				for (var coord in cells) {
+					var otherCell = cells[coord];
+					if (otherCell && cell.x != otherCell.x && cell.y != otherCell.y && 
 						Math.abs(cell.x - otherCell.x) <= 1 && Math.abs(cell.y - otherCell.y) <= 1) {
 						neighbours++;
 					}
 				}
-			}
+			};
 
 			this.tick = function() {
-				console.log('tick');
-				var liveCells = [];
-				for (var i = 0; i < this.cells.length; i++) {
-					var cell = this.cells[i];
+
+				// mark living cells to kill
+				for (var coord in this.cells) {
+					var cell = this.cells[coord];
 					var neighbours = neighbourCount(cell, this.cells);
-					if (neighbours > 1 && neighbours < 4) {
-						liveCells.push(cell);
+					if (neighbours < 2 || neighbours > 3) {
+						cell.kill = true;
 					}
 				}
-				this.cells = liveCells;
-			}
+
+				// resurrect dead cells
+				var minX = Math.min(this.cells.map(function(c) { return c.x; }));
+				var maxX = Math.max(this.cells.map(function(c) { return c.x; }));
+				var minY = Math.min(this.cells.map(function(c) { return c.y; }));
+				var maxY = Math.min(this.cells.map(function(c) { return c.y; }));
+
+				for (var x = minX - 1; x <= maxX + 1; x++) {
+					for (var y = minY - 1; y <= maxY + 1; y++) {
+						var cell = {x : x, y : y};
+						var cellId = getCellId(cell);
+						if (!(cellId in this.cells)) {
+							var neighbours = neighbourCount(cell, this.cells);
+							if (neighbours == 3) {
+								this.cells[cellId] = cell;
+							}
+						}
+					}
+				}
+
+				// kill cells
+				for (var coord in this.cells) {
+					var cell = this.cells[coord];
+					if (cell.kill) {
+						delete this.cells[coord];
+					}
+				}
+			};
 		};
 
 		var grid = new Grid([{x:5, y:5}, {x:5, y:4}]);
 
 		var drawGrid = function(grid) {
-					context.clearRect(0,0,420,420);
-			// TODO clear grid
+			context.clearRect(0,0,420,420);
 			for (var i = 0; i < grid.cells.length; i++) {
 				var cell = grid.cells[i];
 				drawCell(cell.x, cell.y);
